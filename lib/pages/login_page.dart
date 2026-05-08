@@ -1,9 +1,90 @@
 import 'package:flutter/material.dart';
 
 import 'home_page.dart';
+import '../services/auth_service.dart';
+import '../services/session.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _authService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Username dan password wajib diisi.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final result = await _authService.login(
+        username: username,
+        password: password,
+      );
+
+      // store in session for other pages
+      Session.currentUser = result;
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              HomePage(displayName: result.nama, username: result.username),
+        ),
+      );
+    } on AuthException catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal terhubung ke server. Periksa API backend.'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +142,11 @@ class LoginPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const TextField(decoration: InputDecoration(hintText: 'user')),
+                TextField(
+                  controller: _usernameController,
+                  decoration: const InputDecoration(hintText: 'user'),
+                  textInputAction: TextInputAction.next,
+                ),
                 const SizedBox(height: 18),
                 Text(
                   'PASSWORD',
@@ -72,21 +157,21 @@ class LoginPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const TextField(
+                TextField(
+                  controller: _passwordController,
                   obscureText: true,
-                  decoration: InputDecoration(hintText: '••••'),
+                  decoration: const InputDecoration(hintText: '••••'),
+                  onSubmitted: (_) {
+                    if (!_isLoading) {
+                      _handleLogin();
+                    }
+                  },
                 ),
                 const SizedBox(height: 22),
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const HomePage(),
-                        ),
-                      );
-                    },
+                    onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4E9A91),
                       foregroundColor: Colors.white,
@@ -99,7 +184,18 @@ class LoginPage extends StatelessWidget {
                         letterSpacing: 0.5,
                       ),
                     ),
-                    child: const Text('LOGIN'),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                        : const Text('LOGIN'),
                   ),
                 ),
                 const SizedBox(height: 28),

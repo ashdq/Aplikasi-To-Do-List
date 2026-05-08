@@ -6,7 +6,10 @@ import 'daftartugas_page.dart';
 import 'pengaturan_page.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.displayName, this.username});
+
+  final String? displayName;
+  final String? username;
 
   static const Color _primary = Color(0xFF4E9A91);
   static const Color _background = Color(0xFFF6F7FB);
@@ -54,7 +57,7 @@ class HomePage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Halo, User! 👋',
+                      'Halo, ${displayName ?? username ?? 'User'}! 👋',
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(
                             fontWeight: FontWeight.w800,

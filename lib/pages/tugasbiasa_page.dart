@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/tugas_service.dart';
 
 class TugasBiasaPage extends StatefulWidget {
   const TugasBiasaPage({super.key});
@@ -17,11 +18,14 @@ class _TugasBiasaPageState extends State<TugasBiasaPage> {
   final TextEditingController _judulController = TextEditingController();
   final TextEditingController _deskripsiController = TextEditingController();
   DateTime? _tanggalJatuhTempo;
+  final TugasService _tugasService = TugasService();
+  bool _isSaving = false;
 
   @override
   void dispose() {
     _judulController.dispose();
     _deskripsiController.dispose();
+    _tugasService.dispose();
     super.dispose();
   }
 
@@ -219,15 +223,63 @@ class _TugasBiasaPageState extends State<TugasBiasaPage> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tugas biasa berhasil disimpan!'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                    Navigator.pop(context);
-                  },
+                  onPressed: _isSaving
+                      ? null
+                      : () async {
+                          final judul = _judulController.text.trim();
+                          final deskripsi = _deskripsiController.text.trim();
+
+                          if (_tanggalJatuhTempo == null || judul.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Tanggal dan judul tugas wajib diisi.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          setState(() {
+                            _isSaving = true;
+                          });
+
+                          try {
+                            await _tugasService.createTugas(
+                              jenisTugas: 'biasa',
+                              tenggat: _tanggalJatuhTempo!,
+                              judulTugas: judul,
+                              deskripsi: deskripsi.isEmpty ? null : deskripsi,
+                            );
+
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Tugas biasa berhasil disimpan!'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                            Navigator.pop(context, true);
+                          } on TugasException catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(e.message)));
+                          } catch (_) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Gagal menghubungi server.'),
+                              ),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isSaving = false;
+                              });
+                            }
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primary,
                     foregroundColor: Colors.white,
@@ -240,7 +292,18 @@ class _TugasBiasaPageState extends State<TugasBiasaPage> {
                       letterSpacing: 0.5,
                     ),
                   ),
-                  child: const Text('SIMPAN'),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : const Text('SIMPAN'),
                 ),
               ),
               const SizedBox(height: 20),

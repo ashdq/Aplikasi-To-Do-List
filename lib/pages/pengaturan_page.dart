@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../services/session.dart';
 
 class PengaturanPage extends StatefulWidget {
   const PengaturanPage({super.key});
@@ -16,12 +18,29 @@ class _PengaturanPageState extends State<PengaturanPage> {
 
   late TextEditingController _passwordLamaController;
   late TextEditingController _passwordBaruController;
+  final AuthService _authService = AuthService();
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _passwordLamaController = TextEditingController();
     _passwordBaruController = TextEditingController();
+    // Refresh UI after first frame to ensure Session.currentUser is displayed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Force rebuild when page is shown (ensure Session is visible)
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -160,24 +179,86 @@ class _PengaturanPageState extends State<PengaturanPage> {
                           ),
                           elevation: 0,
                         ),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Password berhasil diubah!'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                          _passwordLamaController.clear();
-                          _passwordBaruController.clear();
-                        },
-                        child: const Text(
-                          'SIMPAN PASSWORD',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                        onPressed: _isSaving
+                            ? null
+                            : () async {
+                                final current = Session.currentUser;
+                                if (current == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('User belum login.'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                final oldPass = _passwordLamaController.text;
+                                final newPass = _passwordBaruController.text;
+                                if (oldPass.isEmpty || newPass.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Semua field wajib diisi.'),
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                setState(() {
+                                  _isSaving = true;
+                                });
+
+                                try {
+                                  await _authService.changePassword(
+                                    username: current.username,
+                                    oldPassword: oldPass,
+                                    newPassword: newPass,
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Password berhasil diubah.',
+                                      ),
+                                    ),
+                                  );
+                                  _passwordLamaController.clear();
+                                  _passwordBaruController.clear();
+                                } on AuthException catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.message)),
+                                  );
+                                } catch (_) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Gagal menghubungi server.',
+                                      ),
+                                    ),
+                                  );
+                                } finally {
+                                  setState(() {
+                                    _isSaving = false;
+                                  });
+                                }
+                              },
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Text(
+                                'SIMPAN PASSWORD',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                       ),
                     ),
                   ],
@@ -220,7 +301,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '[Nama Mahasiswa]',
+                            Session.currentUser?.nama ?? '[Nama Mahasiswa]',
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
                                   color: _textDark,
@@ -229,7 +310,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'NIM: [xxxxxxxxxx]',
+                            'NIM: ${Session.currentUser?.nim ?? '[xxxxxxxxxx]'}',
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(color: _textMuted, fontSize: 12),
                           ),
