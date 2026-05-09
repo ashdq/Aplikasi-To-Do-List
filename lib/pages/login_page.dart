@@ -16,6 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -159,8 +160,22 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(hintText: '••••'),
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: '••••',
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                    ),
+                  ),
                   onSubmitted: (_) {
                     if (!_isLoading) {
                       _handleLogin();

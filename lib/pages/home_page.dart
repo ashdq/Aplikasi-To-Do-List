@@ -4,12 +4,105 @@ import 'tugaspenting_page.dart';
 import 'tugasbiasa_page.dart';
 import 'daftartugas_page.dart';
 import 'pengaturan_page.dart';
+import '../services/tugas_service.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key, this.displayName, this.username});
 
   final String? displayName;
   final String? username;
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final TugasService _tugasService = TugasService();
+  int _tugasSelesai = 0;
+  int _tugasBelumSelesai = 0;
+  List<int> _completedPerWeekday = List<int>.filled(7, 0);
+  bool _isLoadingSummary = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTaskSummary();
+  }
+
+  @override
+  void dispose() {
+    _tugasService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadTaskSummary() async {
+    setState(() {
+      _isLoadingSummary = true;
+    });
+
+    try {
+      final tasks = await _tugasService.fetchTugas();
+      if (!mounted) return;
+
+      final selesai = tasks.where((task) => task.isSelesai).length;
+      final belumSelesai = tasks.length - selesai;
+      final completedPerWeekday = List<int>.filled(7, 0);
+      final now = DateTime.now();
+      final weekStart = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(Duration(days: now.weekday - DateTime.monday));
+      final weekEnd = weekStart.add(const Duration(days: 7));
+
+      for (final task in tasks) {
+        final completedAt = task.completedAt;
+        if (completedAt == null) {
+          continue;
+        }
+
+        final completedDay = DateTime(
+          completedAt.year,
+          completedAt.month,
+          completedAt.day,
+        );
+
+        if (completedDay.isBefore(weekStart) ||
+            !completedDay.isBefore(weekEnd)) {
+          continue;
+        }
+
+        completedPerWeekday[completedDay.weekday - DateTime.monday]++;
+      }
+
+      setState(() {
+        _tugasSelesai = selesai;
+        _tugasBelumSelesai = belumSelesai;
+        _completedPerWeekday = completedPerWeekday;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _tugasSelesai = 0;
+        _tugasBelumSelesai = 0;
+        _completedPerWeekday = List<int>.filled(7, 0);
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingSummary = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _openPage(Widget page) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
+    await _loadTaskSummary();
+  }
 
   static const Color _primary = Color(0xFF4E9A91);
   static const Color _background = Color(0xFFF6F7FB);
@@ -57,7 +150,7 @@ class HomePage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Halo, ${displayName ?? username ?? 'User'}! 👋',
+                      'Halo, ${widget.displayName ?? widget.username ?? 'User'}! 👋',
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(
                             fontWeight: FontWeight.w800,
@@ -79,7 +172,9 @@ class HomePage extends StatelessWidget {
                           child: _buildStatCard(
                             context,
                             title: 'TUGAS SELESAI',
-                            value: '12',
+                            value: _isLoadingSummary
+                                ? '...'
+                                : _tugasSelesai.toString(),
                             valueColor: _green,
                           ),
                         ),
@@ -88,7 +183,9 @@ class HomePage extends StatelessWidget {
                           child: _buildStatCard(
                             context,
                             title: 'BELUM SELESAI',
-                            value: '8',
+                            value: _isLoadingSummary
+                                ? '...'
+                                : _tugasBelumSelesai.toString(),
                             valueColor: _red,
                           ),
                         ),
@@ -117,7 +214,7 @@ class HomePage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'TUGAS SELESAI / HARI [BONUS]',
+                      'TUGAS SELESAI / MINGGU INI',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         color: _textMuted,
                         fontWeight: FontWeight.w700,
@@ -128,20 +225,55 @@ class HomePage extends StatelessWidget {
                       height: 110,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
-                        children: const [
-                          Expanded(child: _DayBar(label: 'Sen', value: 44)),
-                          SizedBox(width: 8),
-                          Expanded(child: _DayBar(label: 'Sel', value: 64)),
-                          SizedBox(width: 8),
-                          Expanded(child: _DayBar(label: 'Rab', value: 54)),
-                          SizedBox(width: 8),
-                          Expanded(child: _DayBar(label: 'Kam', value: 92)),
-                          SizedBox(width: 8),
-                          Expanded(child: _DayBar(label: 'Jum', value: 72)),
-                          SizedBox(width: 8),
-                          Expanded(child: _DayBar(label: 'Sab', value: 104)),
-                          SizedBox(width: 8),
-                          Expanded(child: _DayBar(label: 'Min', value: 58)),
+                        children: [
+                          Expanded(
+                            child: _DayBar(
+                              label: 'Sen',
+                              value: _completedPerWeekday[0].toDouble(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _DayBar(
+                              label: 'Sel',
+                              value: _completedPerWeekday[1].toDouble(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _DayBar(
+                              label: 'Rab',
+                              value: _completedPerWeekday[2].toDouble(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _DayBar(
+                              label: 'Kam',
+                              value: _completedPerWeekday[3].toDouble(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _DayBar(
+                              label: 'Jum',
+                              value: _completedPerWeekday[4].toDouble(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _DayBar(
+                              label: 'Sab',
+                              value: _completedPerWeekday[5].toDouble(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _DayBar(
+                              label: 'Min',
+                              value: _completedPerWeekday[6].toDouble(),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -153,12 +285,7 @@ class HomePage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TugasPentingPage(),
-                        ),
-                      ),
+                      onTap: () => _openPage(const TugasPentingPage()),
                       child: _buildActionCard(
                         context,
                         icon: Icons.add,
@@ -171,12 +298,7 @@ class HomePage extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TugasBiasaPage(),
-                        ),
-                      ),
+                      onTap: () => _openPage(const TugasBiasaPage()),
                       child: _buildActionCard(
                         context,
                         icon: Icons.add,
@@ -193,12 +315,7 @@ class HomePage extends StatelessWidget {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const DaftarTugasPage(),
-                        ),
-                      ),
+                      onTap: () => _openPage(const DaftarTugasPage()),
                       child: _buildActionCard(
                         context,
                         icon: Icons.format_list_bulleted,
@@ -211,12 +328,7 @@ class HomePage extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PengaturanPage(),
-                        ),
-                      ),
+                      onTap: () => _openPage(const PengaturanPage()),
                       child: _buildActionCard(
                         context,
                         icon: Icons.settings,
@@ -372,14 +484,16 @@ class _DayBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final barHeight = (value * 18).clamp(0, 90).toDouble();
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          height: value.clamp(0, 90).toDouble(),
+          height: barHeight,
           decoration: BoxDecoration(
-            color: HomePage._primary,
+            color: const Color(0xFF4E9A91),
             borderRadius: BorderRadius.circular(6),
           ),
         ),
@@ -388,7 +502,7 @@ class _DayBar extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: HomePage._textMuted,
+            color: const Color(0xFF6B7280),
             fontSize: 10,
           ),
         ),

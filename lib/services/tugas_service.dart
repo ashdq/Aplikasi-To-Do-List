@@ -18,16 +18,23 @@ class TugasItem {
     required this.judul,
     required this.tanggal,
     required this.tipe,
+    required this.status,
     this.deskripsi,
-    this.isSelesai = false,
+    this.completedAt,
   });
 
   final int id;
   final String judul;
   final DateTime tanggal;
   final String tipe; // penting | biasa
+  String status; // belum selesai | selesai
   final String? deskripsi;
-  bool isSelesai;
+  final DateTime? completedAt;
+
+  bool get isSelesai => status == 'selesai';
+  set isSelesai(bool value) {
+    status = value ? 'selesai' : 'belum selesai';
+  }
 
   factory TugasItem.fromJson(Map<String, dynamic> json) {
     final rawDate = '${json['tenggat'] ?? ''}'.trim();
@@ -38,6 +45,8 @@ class TugasItem {
       judul: '${json['judul_tugas'] ?? ''}',
       tanggal: parsedDate ?? DateTime.now(),
       tipe: '${json['jenis_tugas'] ?? 'biasa'}',
+      status: '${json['status'] ?? 'belum selesai'}',
+      completedAt: DateTime.tryParse('${json['completed_at'] ?? ''}'),
       deskripsi: json['deskripsi'] == null ? null : '${json['deskripsi']}',
     );
   }
@@ -136,6 +145,41 @@ class TugasService {
     }
 
     return TugasItem.fromJson(rawData);
+  }
+
+  Future<void> updateStatus({required int id, required bool isSelesai}) async {
+    final uri = Uri.parse('$baseUrl/tugas.php');
+    final response = await _client.post(
+      uri,
+      body: {
+        'id': id.toString(),
+        'status': isSelesai ? 'selesai' : 'belum selesai',
+      },
+    );
+
+    if (kDebugMode) {
+      print('updateStatus response status: ${response.statusCode}');
+      print('updateStatus response body: ${response.body}');
+    }
+
+    dynamic decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {
+      decoded = null;
+    }
+
+    if (decoded is! Map<String, dynamic>) {
+      throw TugasException('Format respons update status tidak valid.');
+    }
+
+    final success = decoded['success'] == true;
+    final message =
+        '${decoded['message'] ?? 'Gagal memperbarui status tugas.'}';
+
+    if (!success) {
+      throw TugasException(message);
+    }
   }
 
   void dispose() {

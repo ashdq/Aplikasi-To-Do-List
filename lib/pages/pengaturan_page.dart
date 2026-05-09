@@ -20,6 +20,8 @@ class _PengaturanPageState extends State<PengaturanPage> {
   late TextEditingController _passwordBaruController;
   final AuthService _authService = AuthService();
   bool _isSaving = false;
+  bool _obscurePasswordLama = true;
+  bool _obscurePasswordBaru = true;
 
   @override
   void initState() {
@@ -108,7 +110,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: _passwordLamaController,
-                      obscureText: true,
+                      obscureText: _obscurePasswordLama,
                       decoration: InputDecoration(
                         hintText: '••••',
                         contentPadding: const EdgeInsets.symmetric(
@@ -129,6 +131,18 @@ class _PengaturanPageState extends State<PengaturanPage> {
                         ),
                         filled: true,
                         fillColor: Colors.white,
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _obscurePasswordLama = !_obscurePasswordLama;
+                            });
+                          },
+                          icon: Icon(
+                            _obscurePasswordLama
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -143,7 +157,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: _passwordBaruController,
-                      obscureText: true,
+                      obscureText: _obscurePasswordBaru,
                       decoration: InputDecoration(
                         hintText: '••••••••',
                         contentPadding: const EdgeInsets.symmetric(
@@ -164,6 +178,18 @@ class _PengaturanPageState extends State<PengaturanPage> {
                         ),
                         filled: true,
                         fillColor: Colors.white,
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _obscurePasswordBaru = !_obscurePasswordBaru;
+                            });
+                          },
+                          icon: Icon(
+                            _obscurePasswordBaru
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

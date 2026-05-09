@@ -58,6 +58,34 @@ class _DaftarTugasPageState extends State<DaftarTugasPage> {
     }
   }
 
+  Future<void> _toggleStatus(TugasItem item, bool value) async {
+    final previousValue = item.isSelesai;
+
+    setState(() {
+      item.isSelesai = value;
+    });
+
+    try {
+      await _tugasService.updateStatus(id: item.id, isSelesai: value);
+    } on TugasException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        item.isSelesai = previousValue;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        item.isSelesai = previousValue;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal menghubungi server.')),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _tugasService.dispose();
@@ -174,9 +202,7 @@ class _DaftarTugasPageState extends State<DaftarTugasPage> {
                                 child: Checkbox(
                                   value: item.isSelesai,
                                   onChanged: (value) {
-                                    setState(() {
-                                      item.isSelesai = value ?? false;
-                                    });
+                                    _toggleStatus(item, value ?? false);
                                   },
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(4),
