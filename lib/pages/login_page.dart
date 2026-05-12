@@ -145,7 +145,7 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: _usernameController,
-                  decoration: const InputDecoration(hintText: 'user'),
+                  decoration: const InputDecoration(hintText: 'Username'),
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 18),

@@ -1,17 +1,19 @@
-# aplikasi_todolist
+# Aplikasi Mobile To-Do List
 
-A new Flutter project.
+## Halaman Login
+![alt text](image.png)
 
-## Getting Started
+## Halaman Beranda
+![alt text](image-1.png)
 
-This project is a starting point for a Flutter application.
+## Halaman Tambah Tugas Penting
+![alt text](image-2.png)
 
-A few resources to get you started if this is your first Flutter project:
+## Halaman Tambah Tugas Biasa
+![alt text](image-3.png)
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Halaman Daftar Tugas
+![alt text](image-4.png)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Halaman Pengaturan
+![alt text](image-5.png)
